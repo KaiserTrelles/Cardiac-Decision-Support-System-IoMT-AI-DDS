@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/7.6.0/rti_routing_service.xsd" version="7.6.0">
+    
+    <types>
+      <const name="MAX_NAME_LEN" type="int32" value="64"/>
+      <const name="MAX_MSG_LEN" type="int32" value="256"/>
+      <const name="MAX_IMAGE_SIZE" type="int32" value="2000000"/>
+      
+      <struct name="ECG_Message" extensibility="appendable">
+        <member name="sender" type="string" stringMaxLength="MAX_NAME_LEN" key="true"/>
+        <member name="message" type="string" stringMaxLength="MAX_MSG_LEN"/>
+        <member name="count" type="int32"/>
+        <member name="image_data" type="byte" sequenceMaxLength="MAX_IMAGE_SIZE"/>
+      </struct>
+
+      <struct name="PatientAlert" extensibility="appendable">
+        <member name="sensor_id" type="string" stringMaxLength="MAX_NAME_LEN" key="true"/>
+        <member name="diagnosis" type="string" stringMaxLength="128"/>
+        <member name="alert_level" type="string" stringMaxLength="32"/>
+        <member name="timestamp" type="string" stringMaxLength="64"/>
+      </struct>
+    </types>
+
+    <qos_library name="MonitoringQosLib">
+        <qos_profile name="MonitoringProfile" is_default_qos="false">
+            <participant_qos>
+                <property>
+                    <value>
+                        <element>
+                            <name>rti.monitor.library</name>
+                            <value>rtimonitoring</value>
+                        </element>
+                        <element>
+                            <name>rti.monitor.create_function</name>
+                            <value>RTIDefaultMonitor_create</value>
+                        </element>
+                    </value>
+                </property>
+            </participant_qos>
+        </qos_profile>
+    </qos_library>
+
+    <domain_library name="DomainLibrary">
+      <domain name="Domain" domain_id="0">
+        <register_type name="ECG_Message" type_ref="ECG_Message"/>
+        <register_type name="PatientAlert" type_ref="PatientAlert"/>
+        
+        <topic name="ECG_Topic" register_type_ref="ECG_Message"/>
+        <topic name="Alert_Topic" register_type_ref="PatientAlert"/>
+      </domain>
+    </domain_library>
+
+    <domain_participant_library name="DomainParticipantLibrary">
+      
+      <domain_participant name="WriterParticipant" domain_ref="DomainLibrary::Domain">
+        <domain_participant_qos base_name="MonitoringQosLib::MonitoringProfile"/>
+        <publisher name="Publisher">
+          <data_writer name="ECGSensor1_Participant" topic_ref="ECG_Topic"/>
+          <data_writer name="ECGSensor2_Participant" topic_ref="ECG_Topic"/>
+          <data_writer name="ECGSensor3_Participant" topic_ref="ECG_Topic"/>
+          <data_writer name="ECGSensor4_Participant" topic_ref="ECG_Topic"/>
+        </publisher>
+      </domain_participant>
+
+      <domain_participant name="ReaderParticipant" domain_ref="DomainLibrary::Domain">
+        <domain_participant_qos base_name="MonitoringQosLib::MonitoringProfile"/>
+        
+        <subscriber name="Subscriber">
+          <data_reader name="AI_Model_Participant" topic_ref="ECG_Topic"/>
+        </subscriber>
+
+        <publisher name="Alert_Publisher">
+            <data_writer name="Alert_Writer" topic_ref="Alert_Topic"/>
+        </publisher>
+      </domain_participant>
+
+      <domain_participant name="NurseParticipant" domain_ref="DomainLibrary::Domain">
+        <domain_participant_qos base_name="MonitoringQosLib::MonitoringProfile"/>
+        <subscriber name="Nurse_Subscriber">
+            <data_reader name="Alert_Reader" topic_ref="Alert_Topic"/>
+        </subscriber>
+      </domain_participant>
+
+    </domain_participant_library>
+</dds>
